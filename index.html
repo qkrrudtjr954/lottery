@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로또 번호 추천 : 응 넌 1등 안돼</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 1rem 0;
+        }
+        .number {
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .number.selected {
+            background-color: #ffd700;
+            font-weight: bold;
+        }
+        .selected-numbers, .recommended-numbers {
+            margin: 1rem 0;
+        }
+        .selected-number, .recommended-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            background-color: #ffd700;
+            margin: 0 5px;
+            font-weight: bold;
+        }
+        .recommended-number {
+            background-color: #4CAF50;
+            color: white;
+        }
+        button, select {
+            font-size: 1rem;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 10px;
+        }
+        button:hover, select:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        select {
+            background-color: #4CAF50;
+        }
+        .instructions {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .instructions summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .instructions ol {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>로또 번호 추천 : 응 넌 1등 안돼</h1>
+        
+        <details class="instructions">
+            <summary>사용법</summary>
+            <ol>
+                <li>로또 번호를 입력할 횟수를 설정합니다. (1~5)</li>
+                <li>당첨될거라 생각하는 번호를 선택합니다.</li>
+                <li>하지만, 당신은 1등에 당첨될 수 없습니다.</li>
+                <li>선택된 번호를 제외한 로또 번호를 추천합니다.</li>
+            </ol>
+        </details>
+
+        <div>
+            <label for="set-count">선택할 세트 수:</label>
+            <select id="set-count" onchange="updateSetCount()">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+            <button onclick="resetAll()">초기화</button>
+        </div>
+
+        <div id="number-grids"></div>
+        
+        <button id="recommend-button" onclick="recommendLottoNumbers()" disabled>번호 추천받기</button>
+        
+        <h2>추천 번호</h2>
+        <div id="recommended-numbers"></div>
+    </div>
+
+    <script>
+        let selectedNumbers = [[], [], [], [], []];
+
+        function updateSetCount() {
+            const setCount = parseInt(document.getElementById('set-count').value);
+            const gridsContainer = document.getElementById('number-grids');
+            gridsContainer.innerHTML = '';
+
+            for (let i = 0; i < setCount; i++) {
+                const setDiv = document.createElement('div');
+                setDiv.innerHTML = `<h2>${i + 1}번째 세트 선택 (6개)</h2>
+                                    <div id="number-grid-${i}" class="number-grid"></div>
+                                    <div id="selected-numbers-${i}" class="selected-numbers"></div>`;
+                gridsContainer.appendChild(setDiv);
+                createNumberGrid(`number-grid-${i}`, i);
+                updateSelectedNumbers(i);
+            }
+
+            updateRecommendButton();
+        }
+
+        function createNumberGrid(containerId, setIndex) {
+            const container = document.getElementById(containerId);
+            for (let i = 1; i <= 45; i++) {
+                const numberElement = document.createElement('div');
+                numberElement.className = 'number';
+                numberElement.textContent = i;
+                numberElement.onclick = () => toggleNumber(i, setIndex);
+                if (selectedNumbers[setIndex].includes(i)) {
+                    numberElement.classList.add('selected');
+                }
+                container.appendChild(numberElement);
+            }
+        }
+
+        function toggleNumber(num, setIndex) {
+            const index = selectedNumbers[setIndex].indexOf(num);
+            const numberElements = document.querySelectorAll(`#number-grid-${setIndex} .number`);
+            
+            if (index === -1 && selectedNumbers[setIndex].length < 6) {
+                selectedNumbers[setIndex].push(num);
+                numberElements[num - 1].classList.add('selected');
+            } else if (index !== -1) {
+                selectedNumbers[setIndex].splice(index, 1);
+                numberElements[num - 1].classList.remove('selected');
+            }
+            
+            selectedNumbers[setIndex].sort((a, b) => a - b);
+            updateSelectedNumbers(setIndex);
+            updateRecommendButton();
+        }
+
+        function updateSelectedNumbers(setIndex) {
+            const container = document.getElementById(`selected-numbers-${setIndex}`);
+            if (container) {
+                container.innerHTML = selectedNumbers[setIndex].map(num => `<span class="selected-number">${num}</span>`).join('');
+            }
+        }
+
+        function updateRecommendButton() {
+            const button = document.getElementById('recommend-button');
+            const setCount = parseInt(document.getElementById('set-count').value);
+            button.disabled = !selectedNumbers.slice(0, setCount).every(set => set.length === 6);
+        }
+
+        function generateLottoNumbers(excludeNumbers) {
+            const numbers = [];
+            while (numbers.length < 6) {
+                const num = Math.floor(Math.random() * 45) + 1;
+                if (!numbers.includes(num) && !excludeNumbers.includes(num)) {
+                    numbers.push(num);
+                }
+            }
+            return numbers.sort((a, b) => a - b);
+        }
+
+        function recommendLottoNumbers() {
+            const setCount = parseInt(document.getElementById('set-count').value);
+            const excludeNumbers = [...new Set(selectedNumbers.slice(0, setCount).flat())];
+            const recommendedSets = [];
+            
+            for (let i = 0; i < 5; i++) {
+                recommendedSets.push(generateLottoNumbers(excludeNumbers));
+            }
+            
+            const numbersContainer = document.getElementById('recommended-numbers');
+            numbersContainer.innerHTML = recommendedSets.map((set, index) => 
+                `<div class="recommended-numbers">
+                    <h3>${index + 1}번째 추천 번호</h3>
+                    ${set.map(num => `<span class="recommended-number">${num}</span>`).join('')}
+                </div>`
+            ).join('');
+        }
+
+        function resetAll() {
+            selectedNumbers = [[], [], [], [], []];
+            document.getElementById('set-count').value = '1';
+            updateSetCount();
+            document.getElementById('recommended-numbers').innerHTML = '';
+        }
+
+        // Initialize with 1 set
+        updateSetCount();
+    </script>
+</body>
+</html>
